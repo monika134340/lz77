@@ -1,0 +1,94 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <tuple>
+
+// Helper structure to store the triplet (length, distance, next_symbol)
+struct LZ77Triplet {
+    int length;
+    int distance;
+    char nextSymbol;
+};
+
+// LZ77 Compression Function
+std::vector<LZ77Triplet> lz77Compress(const std::string& input) {
+    std::vector<LZ77Triplet> compressedData;
+    int searchBufferSize = 256;  // You can adjust the size based on memory constraints
+    int lookaheadBufferSize = 16;  // This can be adjusted as well
+    
+    int i = 0;
+    while (i < input.size()) {
+        int matchLength = 0;
+        int matchDistance = 0;
+        char nextChar = input[i];
+
+        // Search for the longest match in the search buffer
+        for (int j = i - 1; j >= std::max(0, i - searchBufferSize); --j) {
+            int k = j;
+            int len = 0;
+            // Compare substring in search buffer and lookahead buffer
+            while (k < i && len < lookaheadBufferSize && input[k] == input[i + len]) {
+                len++;
+                k++;
+            }
+            if (len > matchLength) {
+                matchLength = len;
+                matchDistance = i - j;
+                nextChar = (i + len < input.size()) ? input[i + len] : '\0';  // Get next char
+            }
+        }
+
+        // Add the triplet to the result
+        compressedData.push_back(LZ77Triplet{matchLength, matchDistance, nextChar});
+        
+        // Move the index to the next part of the input
+        i += matchLength + 1;
+    }
+
+    return compressedData;
+}
+
+// LZ77 Decompression Function
+std::string lz77Decompress(const std::vector<LZ77Triplet>& compressedData) {
+    std::string decompressedData;
+    for (const auto& triplet : compressedData) {
+        if (triplet.length > 0) {
+            int startIdx = decompressedData.size() - triplet.distance;
+            for (int i = 0; i < triplet.length; ++i) {
+                decompressedData += decompressedData[startIdx + i];
+            }
+        }
+        // Add the next symbol
+        if (triplet.nextSymbol != '\0') {
+            decompressedData += triplet.nextSymbol;
+        }
+    }
+    return decompressedData;
+}
+
+// Helper function to display the compressed data
+void printCompressedData(const std::vector<LZ77Triplet>& compressedData) {
+    for (const auto& triplet : compressedData) {
+        std::cout << "(" << triplet.length << ", " << triplet.distance << ", '"
+                  << triplet.nextSymbol << "')" << std::endl;
+    }
+}
+
+int main() {
+    // Example input
+    std::string input = "ABABABABABA";
+
+    std::cout << "Original data: " << input << std::endl;
+
+    // Compress the data using LZ77
+    std::vector<LZ77Triplet> compressedData = lz77Compress(input);
+
+    std::cout << "\nCompressed data (LZ77 triplets):\n";
+    printCompressedData(compressedData);
+
+    // Decompress the data
+    std::string decompressedData = lz77Decompress(compressedData);
+    std::cout << "\nDecompressed data: " << decompressedData << std::endl;
+
+    return 0;
+}
